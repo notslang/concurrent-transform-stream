@@ -1,0 +1,24 @@
+{
+  "name": "concurrent-transform-stream",
+  "description": "",
+  "version": "0.0.0",
+  "author": "Sean Lang <slang800@gmail.com>",
+  "devDependencies": {
+    "coffee-script": "^1.9.1",
+    "mocha": "^2.2.1",
+    "should": "^5.2.0"
+  },
+  "license": "GPLv3",
+  "main": "lib",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/slang800/concurrent-transform-stream.git"
+  },
+  "scripts": {
+    "test": "mocha"
+  },
+  "dependencies": {
+    "core-util-is": "^1.0.1",
+    "readable-stream": "^1.1.13"
+  }
+}
