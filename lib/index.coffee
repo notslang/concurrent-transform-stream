@@ -1,5 +1,4 @@
 Duplex = require('readable-stream').Duplex
-util = require 'core-util-is'
 
 class TransformState
   ###*
@@ -58,7 +57,7 @@ class TransformState
     rs = @stream._readableState
     rs.reading = false
     if rs.needReadable or rs.length < rs.highWaterMark
-      @stream._read rs.highWaterMark
+      @stream._read()
     return
 
   checkJobBuffer: =>
@@ -68,7 +67,8 @@ class TransformState
       delete @jobBuffer[String(@lastOutputChunkId)]
       @lastOutputChunkId++
 
-    if @drainCb? and Object.keys(@jobBuffer).length is 0 and @activeTransforms is 0
+    if @drainCb? and Object.keys(@jobBuffer).length is 0 and
+       @activeTransforms is 0
       @drainCb()
     return
 
@@ -126,7 +126,7 @@ class Transform extends Duplex
     # when the writable side finishes, then flush out anything remaining.
     @once 'prefinish', =>
       @_transformState.drainCb = =>
-        if util.isFunction(@_flush)
+        if typeof @._flush is 'function'
           @_flush (err) =>
             @_done(err)
             return
@@ -157,7 +157,7 @@ class Transform extends Duplex
   # Doesn't matter what the args are here.
   # _transform does all the work.
   # That we got here means that the readable side wants more data.
-  _read: (n) =>
+  _read: =>
     # we need _readableState.buffer to be emptied (by the read executing) before
     # we try calling the write callback, so we use nextTick.
     process.nextTick @_transformState.callWriteCb

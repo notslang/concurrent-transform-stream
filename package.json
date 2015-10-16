@@ -3,7 +3,6 @@
   "version": "0.0.0",
   "author": "Sean Lang <slang800@gmail.com>",
   "dependencies": {
-    "core-util-is": "^1.0.1",
     "readable-stream": "^2.0.2"
   },
   "devDependencies": {
