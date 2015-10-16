@@ -1,8 +1,11 @@
 {
   "name": "concurrent-transform-stream",
-  "description": "",
   "version": "0.0.0",
   "author": "Sean Lang <slang800@gmail.com>",
+  "dependencies": {
+    "core-util-is": "^1.0.1",
+    "readable-stream": "^1.1.13"
+  },
   "devDependencies": {
     "coffee-script": "^1.9.1",
     "mocha": "^2.2.1",
@@ -16,9 +19,5 @@
   },
   "scripts": {
     "test": "mocha"
-  },
-  "dependencies": {
-    "core-util-is": "^1.0.1",
-    "readable-stream": "^1.1.13"
   }
 }
