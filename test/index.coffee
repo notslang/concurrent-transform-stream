@@ -1,6 +1,10 @@
 should = require 'should'
-Transform = require('../lib')
-PassThrough = require('../lib/passthrough')
+Transform = require '../lib'
+PassThrough = require '../lib/passthrough'
+###
+Transform = require 'readable-stream/transform'
+PassThrough = require 'readable-stream/passthrough'
+###
 
 describe 'Stream PassThrough', ->
   it 'should support {objectMode: true}', (done) ->
@@ -20,33 +24,7 @@ describe 'Stream PassThrough', ->
     src.pipe(tx).pipe dest
     i = -1
 
-    int = setInterval(->
-      if i > 10
-        src.end()
-        clearInterval int
-      else
-        src.write i++
-      return
-    )
-
-  it 'should support {objectMode: true}', (done) ->
-    src = new PassThrough(objectMode: true)
-    tx = new PassThrough(objectMode: true)
-    dest = new PassThrough(objectMode: true)
-    expect = [-1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-    results = []
-
-    dest.on 'end', ->
-      should.deepEqual(results, expect)
-      done()
-
-    dest.on 'data', (x) ->
-      results.push x
-
-    src.pipe(tx).pipe dest
-    i = -1
-
-    int = setInterval(->
+    int = setInterval( ->
       if i > 10
         src.end()
         clearInterval int
@@ -166,7 +144,7 @@ describe 'Stream Transform', ->
     setImmediate s1.write.bind(s1), 'later'
 
 describe 'Stream2 Transform', ->
-  it.skip 'writable side consumption', (done) ->
+  it 'writable side consumption', (done) ->
     tx = new Transform(highWaterMark: 10)
     transformed = 0
 
@@ -190,7 +168,7 @@ describe 'Stream2 Transform', ->
     done()
     return
 
-  it.skip 'passthrough', (done) ->
+  it 'passthrough', (done) ->
     pt = new PassThrough()
     pt.write new Buffer('foog')
     pt.write new Buffer('bark')
@@ -204,7 +182,7 @@ describe 'Stream2 Transform', ->
     done()
     return
 
-  it.skip 'object passthrough', (done) ->
+  it 'object passthrough', (done) ->
     pt = new PassThrough(objectMode: true)
     pt.write 1
     pt.write true
@@ -224,8 +202,8 @@ describe 'Stream2 Transform', ->
     done()
     return
 
-  it.skip 'simple transform', (done) ->
-    pt = new Transform
+  it 'simple transform', (done) ->
+    pt = new Transform()
 
     pt._transform = (c, e, cb) ->
       ret = new Buffer(c.length)
@@ -246,7 +224,7 @@ describe 'Stream2 Transform', ->
     done()
     return
 
-  it.skip 'simple object transform', (done) ->
+  it 'simple object transform', (done) ->
     pt = new Transform(objectMode: true)
 
     pt._transform = (c, e, cb) ->
@@ -331,7 +309,7 @@ describe 'Stream2 Transform', ->
     return
 
   it.skip 'assymetric transform (compress)', (done) ->
-    pt = new Transform
+    pt = new Transform()
     # each output is the first char of 3 consecutive chunks,
     # or whatever's left.
     pt.state = ''
@@ -393,9 +371,9 @@ describe 'Stream2 Transform', ->
         saved = c
       else
         if saved
-          @push saved
+          pt.push saved
           saved = null
-        @push c
+        pt.push c
       cb()
       return
 
@@ -404,21 +382,16 @@ describe 'Stream2 Transform', ->
         pt.write new Buffer('d')
         pt.write new Buffer('ef'), ->
           pt.end()
-          return
-
-      setTimeout (->
-        should.equal pt.read().toString(), 'abc'
-        setTimeout (->
-          should.equal pt.read().toString(), 'def'
+          should.equal pt.read().toString(), 'abcdef'
           should.equal pt.read(), null
           done()
-        ), 30
-      ), 30
+          return
+        return
       return
     pt.write new Buffer('abc')
     return
 
-  it.skip 'passthrough event emission', (done) ->
+  it 'passthrough event emission', (done) ->
     pt = new PassThrough()
     emits = 0
     pt.on 'readable', ->
@@ -450,7 +423,7 @@ describe 'Stream2 Transform', ->
     done()
     return
 
-  it.skip 'passthrough event emission reordered', (done) ->
+  it 'passthrough event emission reordered', (done) ->
     pt = new PassThrough()
     emits = 0
     pt.on 'readable', ->
@@ -484,7 +457,7 @@ describe 'Stream2 Transform', ->
     return
 
   it 'passthrough facaded', (done) ->
-    pt = new PassThrough
+    pt = new PassThrough()
     datas = []
     pt.on 'data', (chunk) ->
       datas.push chunk.toString()
@@ -524,8 +497,8 @@ describe 'Stream2 Transform', ->
       try
         jp.push JSON.parse(data)
         cb()
-      catch er
-        cb er
+      catch err
+        cb err
       return
 
     # anything except null/undefined is fine.
@@ -541,34 +514,28 @@ describe 'Stream2 Transform', ->
       ] }
     ]
 
-    jp.on 'end', ->
-      done()
-      return
+    jp.on 'end', done
 
     objects.forEach (obj) ->
-      jp.write JSON.stringify(obj)
+      jp.write JSON.stringify(obj), ->
+        res = jp.read()
+        should.deepEqual res, obj
+        if obj is objects[-1..][0]
+          # read one more time after last obj to get the 'end' event
+          setImmediate -> jp.read()
+      return
 
     jp.end()
-
-    jp.on 'readable', ->
-      while (res = jp.read()) isnt null
-        obj = objects.shift()
-        should.deepEqual res, obj
-
-      if objects.length is 0
-        # read one more time to get the 'end' event
-        should.equal jp.read(), null
     return
 
   it 'object transform (json stringify)', (done) ->
     js = new Transform(objectMode: true)
-
     js._transform = (data, encoding, cb) ->
       try
         js.push JSON.stringify(data)
         cb()
-      catch er
-        cb er
+      catch err
+        cb err
       return
 
     # anything except null/undefined is fine.
@@ -583,27 +550,63 @@ describe 'Stream2 Transform', ->
         'string'
       ] }
     ]
+    stringifiedObjects = []
+    for obj in objects
+      stringifiedObjects.push
 
-    js.on 'end', ->
-      done()
-      return
+    js.on 'end', done
 
     objects.forEach (obj) ->
-      js.write obj
+      js.write obj, ->
+        res = js.read()
+        res.should.equal JSON.stringify(obj)
+        if obj is objects[-1..][0]
+          # read one more time after last obj to get the 'end' event
+          setImmediate -> js.read()
+      return
 
     js.end()
-
-    js.on 'readable', ->
-      while (res = js.read()) isnt null
-        obj = objects.shift()
-        should.equal res, JSON.stringify(obj)
-
-      if objects.length is 0
-        # read one more time to get the 'end' event
-        should.equal js.read(), null
     return
 
-  it 'should maintain ordering', (done) ->
+  it 'should support concurrent pipes', (done) ->
+    class Test extends Transform
+      _transform: (chunk, encoding, cb) ->
+        # set a timeout equal in duration to the number we got
+        setTimeout(( ->
+          cb(null, chunk)
+        ), chunk)
+
+    testStream = new Test(objectMode: true)
+    destStream = new PassThrough(objectMode: true)
+
+    output = []
+    testStream.pipe(destStream)
+
+    destStream.on('data', output.push.bind(output))
+    destStream.on('finish', ->
+      should.deepEqual(output, [
+        100
+        200
+        300
+        400
+        500
+        600
+        700
+        800
+        900
+        1000
+      ])
+      done()
+    )
+
+    # we output the smallest numbers first because they finish first. this test
+    # would time out if it wasn't being done concurrently
+    for i in [10...0]
+      testStream.write i * 100
+
+    testStream.end()
+
+  it 'should be concurrent', (done) ->
     class Test extends Transform
       _transform: (chunk, encoding, cb) ->
         # set a timeout equal in duration to the number we got
@@ -620,65 +623,23 @@ describe 'Stream2 Transform', ->
     )
     testStream.on('end', ->
       should.deepEqual(output, [
-        1000
-        900
-        800
-        700
-        600
-        500
-        400
-        300
-        200
         100
+        200
+        300
+        400
+        500
+        600
+        700
+        800
+        900
+        1000
         null
       ])
       done()
     )
 
-    # we output the largest numbers first. they will finish last, but will still
-    # be output in the correct order. this test would time out if it wasn't
-    # being done concurrently
-    for i in [10...0]
-      testStream.write i * 100
-
-    testStream.end()
-
-  it 'should maintain ordering (with push)', (done) ->
-    class Test extends Transform
-      _transform: (chunk, encoding, cb) ->
-        # set a timeout equal in duration to the number we got
-        setTimeout(( =>
-          @push(chunk)
-          cb()
-        ), chunk)
-
-    testStream = new Test(objectMode: true)
-
-    output = []
-
-    testStream.on('readable', ->
-      output.push testStream.read()
-    )
-    testStream.on('end', ->
-      should.deepEqual(output, [
-        1000
-        900
-        800
-        700
-        600
-        500
-        400
-        300
-        200
-        100
-        null
-      ])
-      done()
-    )
-
-    # we output the largest numbers first. they will finish last, but will still
-    # be output in the correct order. this test would time out if it wasn't
-    # being done concurrently
+    # we output the smallest numbers first because they finish first. this test
+    # would time out if it wasn't being done concurrently
     for i in [10...0]
       testStream.write i * 100
 
